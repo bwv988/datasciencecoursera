@@ -1,3 +1,3 @@
-# R Programming
+## R Programming
 
-An exploration of R-related programming topics.
+An exploration of `R`-related programming topics.

@@ -1,3 +1,3 @@
-# Regression Models
+## Regression Models
 
-In this report, a regresssion model analysis is being performed on the <p>mtcars</p> dataset.
+In this report, a regresssion model analysis is being performed on the `mtcars` dataset.
