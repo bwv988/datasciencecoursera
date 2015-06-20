@@ -1,0 +1,113 @@
+# Reproducible Research: Peer Assessment 1
+
+## Description of raw data
+This assignment makes use of data from a personal activity monitoring device. This device collects data at 5 minute intervals through out the day. The data consists of two months of data from an anonymous individual collected during the months of October and November, 2012 and include the number of steps taken in 5 minute intervals each day.
+
+The data set contains activity information for a time period of 61 days.
+
+## Loading and preprocessing the data
+The data set contains a number of NAs but is otherwise clean. Here I am loading the source data.
+
+```{r}
+data <- read.csv("data//activity.csv")
+```
+
+## What is the mean total number of steps taken per day?
+### Histogram of total number of steps taken per day
+For the purpose of plotting the results, the actual dates for the 61 days period covered in the original data set were replaced with a sequence from 1 to 61. So 1 refers to the first day in the data set, i.e. 2012-10-01 and so forth.
+
+```{r echo=TRUE, fig.width=11}
+totalSteps <- aggregate(x=data$steps, list(date=data$date), sum, na.rm=TRUE)
+# Replace with sequence.
+totalSteps$date <- seq_along(totalSteps$date)
+barplot(totalSteps$x, names.arg=totalSteps$date, main="Total Number of Steps per Day", col = c("cornsilk"), xlab="Day", ylab="Total Number of Steps")
+```
+
+### Mean and median total number of steps taken
+```{r results="hide"}
+meanSteps <- mean(totalSteps$x)
+medSteps <- median(totalSteps$x)
+```
+
+The mean number of steps taken is **`r meanSteps`** and the median is **`r medSteps`** 
+
+## What is the average daily activity pattern?
+### Graphical evaluation
+The below generates a plot of the average number of steps for each 5 minute interval, taken over all days. 
+```{r}
+avgActivityData <- aggregate(x=data$steps, list(interval=as.factor(data$interval)), mean, na.rm=TRUE)
+plot(x=as.numeric(avgActivityData$interval), y=avgActivityData$x, type="l", main="Plot of Average Activity", xlab="Time Interval", ylab="Average Number of Steps per Interval", col="red")
+````
+
+### Maximum interval
+In the code block below we determine the interval with the maximum of the averages over all time intervals.
+
+
+```{r results='hide'}
+maxInterval <- which(avgActivityData$x == max(avgActivityData$x))
+```
+
+It is interval number **`r maxInterval`** which contains the maximum number of average steps. 
+The running interval number is **`r avgActivityData$interval[[maxInterval]]`** and the maximum average step value is **`r max(avgActivityData$x)`.**
+`
+
+## Imputing missing values
+
+### 1. Total number of missing values in the dataset
+
+```{r}
+naData <- data[is.na(data), ]
+naNum <- nrow(naData)
+```
+
+The total number of missing data values is **`r naNum`**.
+
+This is the list of reslts:
+
+```{r}
+naData
+```
+
+### 2. Replace missing values.
+Here we are replacing the missing values with the **mean value of steps** for the specific day, as calculated above. The new data set is called "newData".
+
+```{r}
+newData <- data
+for (val in which(sapply(data$steps, is.na))) {
+  theDate <- data[val, ]$date
+  newData[val, ]$steps <- totalSteps[theDate, ]$x
+}
+```
+
+### 3. and 4.
+
+```{r}
+newTotalSteps <- aggregate(x=newData$steps, list(date=newData$date), sum, na.rm=TRUE)
+newAvgActivityData <- aggregate(x=newData$steps, list(interval=as.factor(newData$interval)), mean, na.rm=TRUE)
+plot(x=as.numeric(newAvgActivityData$interval), y=newAvgActivityData$x, type="l", main="Plot of Average Activity\nNew Data Set", xlab="Time Interval", ylab="Average Number of Steps per Interval", col="blue")
+newMeanSteps <- mean(totalSteps$x)
+newMedSteps <- median(totalSteps$x)
+```
+
+
+Based on the new data set, the mean number of steps is **`r newMeanSteps`** and the median number of steps is **`r newMedSteps`**.
+
+Thus, as a result of the methodology chosen for replacing the NA values, there is **no change** in the mean and median step values from above.
+
+## Are there differences in activity patterns between weekdays and weekends?
+
+The following multi-panel plot compares average number of steps taken during weekdays and weekend days.
+
+```{r}
+wdays <- weekdays(as.Date(newData$date))
+weekDaysData <- subset(newData, (wdays != "Saturday") | (wdays != "Sunday"))
+weekEndDaysData <- subset(newData, (wdays == "Saturday") | (wdays == "Sunday"))
+
+par(mfrow=c(2,1))
+avgActivityData <- aggregate(x=weekDaysData$steps, list(interval=as.factor(weekDaysData $interval)), mean)
+plot(x=as.numeric(avgActivityData$interval), y=avgActivityData$x, type="l", main="Plot of Average Activity\nWeek Days", xlab="Time Interval", ylab="Average Number of Steps per Interval", col="red")
+
+avgActivityDataWE <- aggregate(x=weekEndDaysData$steps, list(interval=as.factor(weekEndDaysData $interval)), mean)
+plot(x=as.numeric(avgActivityDataWE$interval), y=avgActivityDataWE$x, type="l", main="Plot of Average Activity\nWeekend Days", xlab="Time Interval", ylab="Average Number of Steps per Interval", col="blue")
+```
+

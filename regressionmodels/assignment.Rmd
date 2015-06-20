@@ -1,0 +1,103 @@
+---
+title: "Regression Analysis of the *mtcars* Data Set"
+output: html_document
+---
+
+## Executive Summary
+The purpose of this analysis is to gain insight on the relationship between the MPG (miles per gallon) and other variables in the *mtcars* data set.
+
+This analysis will show: 1. The transmission type is not the only factor that can generally explain whether mpg is lower or higher in a car, and 2. we find that - on average - mpg is lower by a factor of 0.7 for automatic transmission cars in comparison to manual ones.
+
+
+#### Processing
+```{r}
+data(mtcars)
+```
+
+The data set contains records for 32 different types of cars. In total, there are 11 variables to be found. The codebook is included with the help pages for mtcars.
+
+Using visual inspection and small tests we can convince ourselves that no further cleaning is necessary.
+
+In order to improve readability and allow for partitioning of the data set into manual and automatic transmission types, we transform the "am" varaible into a factor variable and re-label the factors:
+
+```{r}
+mtcars$am <- as.factor(mtcars$am)
+levels(mtcars$am) <- c("Automatic", "Manual")
+```
+
+#### Exploring
+A first quick idea would be to compare the mean mpg for both transmission types:
+
+```{r}
+aggregate(mpg~am, data = mtcars, mean)
+```
+
+It appears that the mpg is lower (i.e. higher fuel consumption) for cars with an automatic transmission. This is further supported by Figure 1 in the appendix.
+
+Additionally, a t-test with a 95% confidence interval can be performed to verify that the difference in means is significant and the null hypothesis - i.e. there is no siginificant difference in the means - can be rejected:
+
+```{r}
+t.test(mpg ~ am, data = mtcars)
+```
+
+Since there are many other variables in the data set, however, we cannot be sure that the transmission type is the only contributing factor for mpg. 
+
+#### Linear Regression Model Building
+Based on the results above, it might seem useful to try and build a linear regression model:
+
+```{r}
+lmfit <- lm(mpg~am, data = mtcars)
+summary(lmfit)
+```
+
+The summary yields that only 33.8% of variability around the mean in the resonse data is explained by this model. This clearly shows that the type of transmission on its own is not enough. In the next steps we determine a better model with a step-wise process:
+
+```{r}
+allmodel <- lm(mpg ~ ., data = mtcars)
+sink("/dev/null"); best <- step(allmodel, direction = "backward"); sink()
+summary(best)
+```
+
+This seems to suggest, that weight, 1/4 mile time, and transmission type are actually the main contributing factors to mpg. This model is better than the previous one, as it explains 83.4% of the variability around the mean. Running an analysis of variance proves this to be the case:
+
+```{r}
+anova(lmfit, best)
+```
+
+#### Diagnostics
+
+The plottet residuals in Figure 2 in the appendix seem to be randomly scattered, which is what we are expecting. As regards the outliers seen in the plots, we can use hatvalues and dfvalues to further look into their respective contribution to the model parameters:
+
+```{r}
+leverage <- hatvalues(best)
+tail(leverage, 3)
+infp <- dfbetas(best)
+tail(infp, 3)
+```
+
+#### Results
+Based on the analysis results, we can answer the questions presented in the first paragraph as follows:
+
+1. It is not generally true to say that, for mpg, manual transmission is better than automatic transmission as there are other factors, e.g. weight, which needs to be taken into account.
+
+2. For the second question, we use the model to calculate the average factor by which automatic transmission mpg is lower than manual transmission one:
+
+```{r}
+automatic <- row.names(mtcars[mtcars$am == "Automatic", ])
+manual <- row.names(mtcars[mtcars$am == "Manual", ])
+p <- predict(best)
+mean(p[automatic]) / mean(p[manual])
+```
+
+## Appendix
+
+```{r echo=FALSE}
+boxplot(mpg~am, data=mtcars, col=(c("grey","brown")), main="Fig. 1 - MPG vs. Transmission Type", xlab="Transmission Type", ylab="MPG")
+```
+
+#### Figure 2 - Diagnostics
+```{r echo=FALSE}
+par(mfrow=c(1, 2))
+plot(best)
+```
+

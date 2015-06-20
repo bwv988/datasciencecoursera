@@ -1,0 +1,183 @@
+---
+title: "Coursera Machine Learning Assignment"
+author: "Ralph Schlosser"
+output: html_document
+---
+
+```{r echo=FALSE}
+setwd("~/Dropbox/coursera/data_science/machine_learning/assignment")
+```
+
+
+## Introduction
+It is conventional wisdom that regular exercise and physical activity lead to a positive effect on health and overall well-being. This "wisdom" is supported and further quantified by a large body of scientific research, some of which already dates back from several decades.
+
+Unlike previously, however, where costly long-term studies had to be set-up to record and analyze data relating to physical activity, we now live in an era where data is readily available and plentiful.
+
+This was made possible by the advent of inexpensive self-monitoring devices such as *Fit Bit*, *Jawbone Up*, or *Nike FuelBand* which enable the carrier of this device to collect various physical parameters through e.g. gyroscopes, accelerometers, pulse meters and in some cases even GPS which are built into the device.
+
+## Goal
+In this study we are considering a data set produced in the above fashion, which records parameters of 6 participants while they were performing a specific type of weight lifting exercises known as _Unilateral Dumbbell Biceps Curl_. 
+
+Participants were asked to perform the exercise in 5 different ways, only one of which being the correct way.
+
+The intention here is to use machine-learning techniques to perform *qualitative activity recognition*, i.e. to not only be able to tell what type of exercise a participant was doing but also how well they were doing it.
+
+The original study and data set can be found at: http://groupware.les.inf.puc-rio.br/ha
+
+## Initial exploration
+
+The data was already broken up into training and test set data and can simply be loaded using the `read.csv2` function:
+
+```{r cache=TRUE}
+training.raw <- read.csv2('~/Dropbox/coursera/data_science/machine_learning/assignment/data/pml-training.csv', sep=',', na.strings=c("#DIV/0!", "", "NA"), row.names = 1)
+test.raw <- read.csv2('~/Dropbox/coursera/data_science/machine_learning/assignment/data/pml-testing.csv', sep=',', na.strings=c("#DIV/0!", "", "NA"), row.names = 1)
+```
+
+The above commands already perform a small amount of data cleaning in that they replace `#DIV/0!` strings with `NA`. 
+
+In total there are `r nrow(training.raw)` rows of data in the training set of `r ncol(training.raw) - 1` variables; the test set contains `r nrow(test.raw)` rows.
+
+Of particular interest for this study is the `classe` variable in the training set. This factor variable records how well the exercise was performed using levels `A` to `E`, where only `A` corresponds to a correctly performed lift exercise. 
+
+This is what we are aiming to predict.
+
+We can look at a table for the `classe` variable.
+```{r echo=FALSE, cache=TRUE}
+table(training.raw$classe)
+```
+
+Unfortunately, due to the sheer amount of covariates there is not much more exploration  / plotting that would make sense at this stage.
+
+### Reducing the amount of covariates
+
+While glancing over the data it becomes apparent that there are quite a few columns with either all `NA`, or nearly all `NA` values. As the amount of actual data values is much smaller than the amount of `NA` entries, techniques like e.g. *imputing* using means etc. cannot be applied, so I chose to drop these columns altogether and exclude them from the subsequent steps. 
+
+Interestingly, in the test data set, those same columns consist of exclusively `NA` values, so the prediction result cannot rely on the respective covariates from those columns:
+
+```{r cache=TRUE}
+preprocess_data <- function(in.df, drop.cols) {
+  out.df <- in.df[, -drop.cols]
+  t <- apply(out.df[, 1:52], 2, as.numeric)
+  out.df <- data.frame(t, classe=out.df[, 53])  
+  return(out.df)
+}
+
+# Drop cols 1-6 and all other colls with only NA values in the test set.
+drop.cols <- c(1:6,  which(apply(is.na(test.raw), 2, all)==TRUE))
+training <- preprocess_data(training.raw, drop.cols)
+```
+
+## Model building
+
+For the prediction model I have decided to use the __Random Forest__ algorithm. This is because I would expect to see a high __out-of-sample__ prediction accuracy. Two different approaches were implemented to compare and verify prediction results. However other methods are possible too.
+
+In order to assess the out-of-sample error rate, __cross validation__ was employed in the second approach, whereas in the first approach a validation set was split from the original training set.
+
+### 1. Using the `randomForest` package / Validation set
+When I started experimentation with `caret`, I found that running `train` with default options seemingly "never"" terminates.
+
+So I left a closer look at what is going on for later and turned my attention to the `randomForest` package:
+
+```{r message=FALSE, cache=TRUE}
+library(caret)
+library(randomForest)
+in.train <- createDataPartition(y=training$classe, p=0.75, list=FALSE)
+training.train <- training[in.train, ]
+training.verify <- training[-in.train, ]
+
+rf.model <- randomForest(classe ~ ., data = training, subset = in.train)
+```
+
+As can be seen from the code, a *validation* set is split from the full training set. This set contains $25\%$ of the data. 
+
+Because the prediction accuracy on the training set is overly optimistic, this validation set is used to get an estimate of the _out of sample_ estimation error:
+
+```{r cache=TRUE}
+# Prediction on verification set.
+predictions.verif <- predict(rf.model, newdata = training.verify)
+
+# Print confusion matrix.
+confusionMatrix(predictions.verif, training.verify$classe)
+```
+
+### Out-of-sample error rate estimate
+
+The above confusion matrix yields an accuracy of $\approx 99.5\%$ with a small p-value on the held-out data. This is already quite good but only an estimate.
+
+#### Predicting on the test set
+Before predicting on the test set we need to ensure that the same transformations are applied to it as to the training set.
+
+After doing this, we can then use our model to predict how well the weight exercise was performed for the given test set:
+
+```{r cache=TRUE}
+test <- preprocess_data(test.raw, drop.cols)
+test <- test[, -53]
+predict(rf.model, newdata = test)
+```
+
+#### Most important variables
+The following plot visualizes the variable importance in decreasing order:
+
+```{r echo=FALSE, message=FALSE, cache=TRUE}
+library(randomForest)
+varImpPlot(rf.model, main="Variable Importance")
+```
+
+From this is can be seen that `roll_belt` and `yaw_belt` appear to have the biggest influence on the prediction outcome.
+
+With this information we can look at a plot of these and see how well they separate the data:
+
+```{r echo=FALSE, cache=TRUE}
+qplot(roll_belt, yaw_belt, data = training, colour = training$classe, main = "Groups")
+```
+
+It turns out that class is `E` pretty well separated by these two variables alone.
+
+### 2. Using `caret's` `train` function / Cross validation
+Running `train` with the `rf` method on the data using default values takes a very long time. This is because it performs __10-fold cross-validation__ and for each fold, models are build for each one of 3 different tuning parameters. 
+
+However, the execution time can be significantly reduced by performing several optimizations:
+
+* Modify default settings for `trainControl`.
+* Use the `doMC` package to leverage multi-core execution.
+
+```{r eval=FALSE}
+library(doMC)
+registerDoMC(4)
+fitControl <- trainControl(method = "cv", 
+                           number = 10,
+                           repeats = 1,
+                           verboseIter = TRUE, 
+                           allowParallel = TRUE)
+rf.model.new <- train(classe ~ ., data = training, method="rf", trControl = fitControl, 
+                      tuneLength = 1)
+
+predictions.new <- predict(rf.model.new, newdata = test)
+```
+
+For 10-fold cross-validation, the final model yields an only marginally higher prediction accuracy of $99.6\%$. This does, however, come at the cost of a significantly longer execution time.
+
+
+#### Predicting on the test set
+
+The results are as before:
+
+```
+predictions.new
+ [1] B A B A A E D B A A B C B A E E A B B B
+Levels: A B C D E
+```
+
+## Conclusions
+
+* Using the Random Forest algorithm we were able to predict how well a participant performed their weight lifting exercise for the given data set with high accuracy.
+
+* The high prediction accuracy seems unusual. Further study would be needed.
+
+* But both approaches implemented concur in their prediction results and come in very close in their accuracy results.
+
+* However, in general I would put higher trust the `train` results, as it offers more flexibility and internal validation.
+
+* The `train` package requires a significant amount of tuning to run faster. More options could have been tested.
+

@@ -1,0 +1,96 @@
+---
+title       : Top 250 IMDB Movies Visualization
+subtitle    : A Shiny application to visualize IMDB Data
+author      : Ralph Schlosser
+job         : 
+logo        : logo.jpg
+framework   : io2012        # {io2012, html5slides, shower, dzslides, ...}
+highlighter : highlight.js  # {highlight.js, prettify, highlight}
+hitheme     : tomorrow      # 
+widgets     : []            # {mathjax, quiz, bootstrap}
+mode        : selfcontained # {standalone, draft}
+knit        : slidify::knit2slides
+---
+
+
+
+<style>
+.title-slide {
+  background-color: #FEFEF5; /* #EDE0CF; ; #CA9F9D*/
+}
+
+.title-slide hgroup > h1{
+ font-family: 'Oswald', 'Helvetica', sanserif; 
+}
+
+.title-slide hgroup > h1, 
+.title-slide hgroup > h2 {
+  color: #944E2D ;  /* ; #EF5150*/
+}
+
+.current article > h2, 
+.class hgroup > h2 {
+  color: #944E2D ;  /* ; #EF5150*/
+}
+</style>
+
+## Introduction
+
+1. About the Application
+2. Some Challenges
+3. Web Scraping with `rvest`
+
+--- .class #id 
+
+## About the Application
+
+* The original idea for the app came from an interesting blog post on [R Bloggers] (http://www.r-bloggers.com/top-250-movies-at-imdb/) about how to retrieve data from the _Internet Movie Data Base_ (IMDB).
+
+* The IMDB contains records of a large number of historic and current movies and television shows.
+
+* It is used and kept up-to-date on a daily basis both by professionals within the movie industry as well as hobbyists. 
+
+* Apart from a variety of information about cast, plot, music, filming locations etc. on a movie, it also maintains a rating index which is derived from IMDB registered users votes.
+
+* This rating is generally seen as measure of quality, i.e. the higher the rating the better the movie.
+
+* The `imdbapp` application visualizes the movie ratings by year, and allows to drill down by rating and country of origin of a particular movie.
+
+--- .class #id 
+
+## Some Challenges
+
+* Since the time the blog mentioned above was written (October 2013), the underlying HTML structure of the IMDB pages have changed.
+
+* This meant that the code used in the blog no longer worked. 
+
+* Most notably, the IMDB has chosen to remove the vote count column.
+
+* The vote count is still displayed, but only on the movie's main page and thus the count had to be retrieved for each movie in the top 250 list individually.
+
+* This was done using a technique that is commonly referred to as "web scraping".
+
+* Also, in order to not upset IMDB due to repeated HTTP request from the same source -- something always to watch out for when scraping the web -- a random delay between 0.5 to 1 second was introduced in the data retrieval function.
+
+--- .class #id 
+
+## Web Scraping with `rvest`
+
+* The `rvest` package (read more on [Rstudio Blogs] (http://blog.rstudio.org/2014/11/24/rvest-easy-web-scraping-with-r/)) was employed for retrieving the required information from the IMDB and build a fresh, top-rated 250 movies data set called `topMovies`.
+
+* When taking a closer look at this data set it appears as if there are far more US movies in the top 250 list, and they've got higher ratings too:
+
+
+```r
+table(topMovies$Country[topMovies$Rating > 8.5])
+```
+
+```
+## 
+##      Brazil     English     Italian       Italy    Japanese New Zealand 
+##           1           5           1           1           1           1 
+##         USA 
+##          20
+```
+
+

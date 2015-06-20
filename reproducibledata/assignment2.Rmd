@@ -1,0 +1,155 @@
+---
+output: html_document
+---
+# Impact of Storms and other Severe Weather Events on Public Health and Economy
+
+```{r}
+library(ggplot2)
+library(gridExtra)
+```
+
+## Synopsis
+The United States National Oceanic and Atmospheric Administration (NOAA) maintains a database of significant weather events which have occured in the U.S. from 1950 until 2011. 
+
+In this data analysis we explore the NOAA database to answer the following questions:
+
+1. Which types of events in the above database are most harmful with respect to population health (fatalities and injuries)?
+
+2. Which types of events in the above database have the greatest economic consequences (property and crop damage)?
+
+The data was recorded over a 61 years period and accordingly of mixed quality. Some cleanup and consolidation was necessary to derive the results to the above questions.
+
+The results are as follows:
+
+* Tornados are the number one harm to population health.
+* Floods and droughts have the greatest economic consequences.
+
+### Reading the Data File
+The data was made available as a bzip2-compressed CSV file. The contents of the file is loaded into R as follows:
+
+```{r cache=TRUE}
+stormData <- read.csv("data/repdata-data-StormData.csv.bz2")
+newStormData <- stormData
+```
+
+## Data Processing
+First, we get an overview of the data:
+
+```{r}
+head(stormData)
+```
+
+### Extract relevant data
+From the above output and additional documents (see [1](#references) and [2](#references)) we can determine that we only require the following columns for our final analysis:
+
+* EVTYPE -- The specific type of event,
+* FATALITIES and INJURIES -- The impact on population health, 
+* PROPDMG and CROPDMG -- The economic impact of property and crop damage.
+
+The latter two are not directly recorded as numerical values but instead are given as mulitples of factors (POPDMGEXP, CROPDMGEXP, see below).
+
+We can now reduce the data set to the relevant information as follows:
+
+```{r}
+relevantColumns <- c("EVTYPE", "FATALITIES", "INJURIES", "CROPDMG", "CROPDMGEXP", "PROPDMG", "PROPDMGEXP")
+relevantStormData <- stormData[, relevantColumns]
+head(relevantStormData)
+```
+
+### Data conversion
+In order to work with numerical amounts and determine a ranking of damages, the actual numerical amounts have to be calculated. However there are some confusing levels for the multiples used in both property and crop damage:
+
+```{r}
+levels(stormData$PROPDMGEXP)
+levels(stormData$CROPDMGEXP)
+```
+
+Upon further exploring the data set it could be established that the number of unclear, confusing and "NA" data entires in the relvevant column is very small against the number of valid entries.
+
+Thus we could further reduce the data set to only include meaningful values and also convert multiples into actual numerical values:
+
+```{r cache = TRUE}
+multiples <- c('k', 'K', 'm', 'M', 'b', 'B')
+relevantStormData <- relevantStormData[which(relevantStormData$PROPDMGEXP 
+                                %in% c("","H","K","M","B")),]
+relevantStormData <- relevantStormData[which(relevantStormData$CROPDMGEXP
+                                %in% c("","H","K","M","B")),]
+expFactors <- c(1000, 1000, 1000000, 1000000, 1000000000, 1000000000)
+names(expFactors) <- multiples
+multiplyFactors <- function(val, exp) val * expFactors[exp]  
+relevantStormData$PROPDMG <- apply(relevantStormData[,c("PROPDMG","PROPDMGEXP")], 1, function(x) multiplyFactors(as.numeric(x["PROPDMG"]), x["PROPDMGEXP"]))
+
+relevantStormData$CROPDMG <- apply(relevantStormData[,c("CROPDMG","CROPDMGEXP")], 1, function(x) multiplyFactors(as.numeric(x["CROPDMG"]), x["CROPDMGEXP"]))
+```
+
+### Fatalities and injuries
+
+For the final results, we calculate the sum of fatalities and injuries by event, order them and only record the top 10 results.
+
+```{r}
+# Aggregate fatalities damages by event.
+fatalities <- aggregate(FATALITIES ~ EVTYPE, relevantStormData, sum)
+fatalities <- fatalities[order(-fatalities$FATALITIES),]
+fatalities <- fatalities[1:10, ]
+# Aggregate injuries damages by event.
+injuries <- aggregate(INJURIES ~ EVTYPE, relevantStormData, sum)
+injuries <- injuries[order(-injuries$INJURIES),]
+injuries <- injuries[1:10, ]
+
+fatalities
+injuries
+```
+
+From these results it can clearly be seen that Tornados are the number one cause for injuries and fatalities.
+
+### Property and crop damage
+The same methodology is applied to property and crop damage:
+
+```{r}
+# Aggregate property damages by event.
+propdmg <- aggregate(PROPDMG ~ EVTYPE, relevantStormData, sum)
+propdmg <- propdmg[order(-propdmg$PROPDMG),]
+propdmg <- propdmg[1:10, ]
+
+# Aggregate crop damages by event.
+cropdmg <- aggregate(CROPDMG ~ EVTYPE, relevantStormData, sum)
+cropdmg <- cropdmg[order(-cropdmg$CROPDMG),]
+cropdmg <- cropdmg[1:10, ]
+propdmg
+cropdmg
+```
+
+These results show that floods are the number one threat to property, and drought is the most significant threat to crop.
+
+## Results
+
+### 1. Most harmful events with regards to population health across the US
+Below is a plot summarising the most harmful events with regards to population health (fatalities) in the US:
+```{r}
+ggplot(fatalities, aes(x=EVTYPE, y=FATALITIES)) + 
+    geom_bar(stat="identity", aes(fill=FATALITIES), 
+             fill="#FCD700", colour="black") + 
+    labs(x="Fatalities by weather event", y="Number of fatalities") + coord_flip()
+```
+
+Another exploratory plot shows the same result are obtained for injirues: Tornadoes.
+
+### 2. Events with the greatest economic consequences
+Similarily, the impact of severe weather events can be summarised in a plot:
+```{r}
+p1 <- ggplot(propdmg, aes(x=EVTYPE, y=PROPDMG)) + 
+    geom_bar(stat="identity", aes(fill=PROPDMG), 
+             fill="#FCD700", colour="black") + 
+    labs(x="Severe weather event", y="Damage to property") + coord_flip()
+
+p2 <- ggplot(cropdmg, aes(x=EVTYPE, y=CROPDMG)) + 
+    geom_bar(stat="identity", aes(fill=CROPDMG), 
+             fill="#FCD700", colour="black") +
+    labs(x="Severe weather event", y="Damage to crop") + coord_flip()
+
+grid.arrange(p1, p2, main=textGrob("Top 10 severe weather events impacting the economy.", gp=gpar(cex=1, fontface="bold", col="#000099")))
+```
+
+# References
+1. [National Weather Service Storm Data Documentation](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf)
+2. [National Climatic Data Center Storm Events FAQ](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2FNCDC%20Storm%20Events-FAQ%20Page.pdf)

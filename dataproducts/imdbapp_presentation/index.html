@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Top 250 IMDB Movies Visualization</title>
+  <meta charset="utf-8">
+  <meta name="description" content="Top 250 IMDB Movies Visualization">
+  <meta name="author" content="Ralph Schlosser">
+  <meta name="generator" content="slidify" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta http-equiv="X-UA-Compatible" content="chrome=1">
+  <link rel="stylesheet" href="libraries/frameworks/io2012/css/default.css" media="all" >
+  <link rel="stylesheet" href="libraries/frameworks/io2012/css/phone.css" 
+    media="only screen and (max-device-width: 480px)" >
+  <link rel="stylesheet" href="libraries/frameworks/io2012/css/slidify.css" >
+  <link rel="stylesheet" href="libraries/highlighters/highlight.js/css/tomorrow.css" />
+  <base target="_blank"> <!-- This amazingness opens all links in a new tab. -->  <link rel=stylesheet href="./assets/css/ribbons.css"></link>
+
+  
+  <!-- Grab CDN jQuery, fall back to local if offline -->
+  <script src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.7.min.js"></script>
+  <script>window.jQuery || document.write('<script src="libraries/widgets/quiz/js/jquery.js"><\/script>')</script> 
+  <script data-main="libraries/frameworks/io2012/js/slides" 
+    src="libraries/frameworks/io2012/js/require-1.0.8.min.js">
+  </script>
+  
+  
+
+</head>
+<body style="opacity: 0">
+  <slides class="layout-widescreen">
+    
+    <!-- LOGO SLIDE -->
+        <slide class="title-slide segue nobackground">
+  <aside class="gdbar">
+    <img src="assets/img/logo.jpg">
+  </aside>
+  <hgroup class="auto-fadein">
+    <h1>Top 250 IMDB Movies Visualization</h1>
+    <h2>A Shiny application to visualize IMDB Data</h2>
+    <p>Ralph Schlosser<br/></p>
+  </hgroup>
+  <article></article>  
+</slide>
+    
+
+    <!-- SLIDES -->
+    <slide class="" id="slide-1" style="background:;">
+  <article data-timings="">
+    <style>
+.title-slide {
+  background-color: #FEFEF5; /* #EDE0CF; ; #CA9F9D*/
+}
+
+.title-slide hgroup > h1{
+ font-family: 'Oswald', 'Helvetica', sanserif; 
+}
+
+.title-slide hgroup > h1, 
+.title-slide hgroup > h2 {
+  color: #944E2D ;  /* ; #EF5150*/
+}
+
+.current article > h2, 
+.class hgroup > h2 {
+  color: #944E2D ;  /* ; #EF5150*/
+}
+</style>
+
+<h2>Introduction</h2>
+
+<ol>
+<li>About the Application</li>
+<li>Some Challenges</li>
+<li>Web Scraping with <code>rvest</code></li>
+</ol>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="id" style="background:;">
+  <hgroup>
+    <h2>About the Application</h2>
+  </hgroup>
+  <article data-timings="">
+    <ul>
+<li><p>The original idea for the app came from an interesting blog post on <a href="http://www.r-bloggers.com/top-250-movies-at-imdb/">R Bloggers</a> about how to retrieve data from the <em>Internet Movie Data Base</em> (IMDB).</p></li>
+<li><p>The IMDB contains records of a large number of historic and current movies and television shows.</p></li>
+<li><p>It is used and kept up-to-date on a daily basis both by professionals within the movie industry as well as hobbyists. </p></li>
+<li><p>Apart from a variety of information about cast, plot, music, filming locations etc. on a movie, it also maintains a rating index which is derived from IMDB registered users votes.</p></li>
+<li><p>This rating is generally seen as measure of quality, i.e. the higher the rating the better the movie.</p></li>
+<li><p>The <code>imdbapp</code> application visualizes the movie ratings by year, and allows to drill down by rating and country of origin of a particular movie.</p></li>
+</ul>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="id" style="background:;">
+  <hgroup>
+    <h2>Some Challenges</h2>
+  </hgroup>
+  <article data-timings="">
+    <ul>
+<li><p>Since the time the blog mentioned above was written (October 2013), the underlying HTML structure of the IMDB pages have changed.</p></li>
+<li><p>This meant that the code used in the blog no longer worked. </p></li>
+<li><p>Most notably, the IMDB has chosen to remove the vote count column.</p></li>
+<li><p>The vote count is still displayed, but only on the movie&#39;s main page and thus the count had to be retrieved for each movie in the top 250 list individually.</p></li>
+<li><p>This was done using a technique that is commonly referred to as &quot;web scraping&quot;.</p></li>
+<li><p>Also, in order to not upset IMDB due to repeated HTTP request from the same source -- something always to watch out for when scraping the web -- a random delay between 0.5 to 1 second was introduced in the data retrieval function.</p></li>
+</ul>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="id" style="background:;">
+  <hgroup>
+    <h2>Web Scraping with <code>rvest</code></h2>
+  </hgroup>
+  <article data-timings="">
+    <ul>
+<li><p>The <code>rvest</code> package (read more on <a href="http://blog.rstudio.org/2014/11/24/rvest-easy-web-scraping-with-r/">Rstudio Blogs</a>) was employed for retrieving the required information from the IMDB and build a fresh, top-rated 250 movies data set called <code>topMovies</code>.</p></li>
+<li><p>When taking a closer look at this data set it appears as if there are far more US movies in the top 250 list, and they&#39;ve got higher ratings too:</p></li>
+</ul>
+
+<pre><code class="r">table(topMovies$Country[topMovies$Rating &gt; 8.5])
+</code></pre>
+
+<pre><code>## 
+##      Brazil     English     Italian       Italy    Japanese New Zealand 
+##           1           5           1           1           1           1 
+##         USA 
+##          20
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+    <slide class="backdrop"></slide>
+  </slides>
+  <div class="pagination pagination-small" id='io2012-ptoc' style="display:none;">
+    <ul>
+      <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=1 title=''>
+         1
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=2 title='About the Application'>
+         2
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=3 title='Some Challenges'>
+         3
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=4 title='Web Scraping with <code>rvest</code>'>
+         4
+      </a>
+    </li>
+  </ul>
+  </div>  <!--[if IE]>
+    <script 
+      src="http://ajax.googleapis.com/ajax/libs/chrome-frame/1/CFInstall.min.js">  
+    </script>
+    <script>CFInstall.check({mode: 'overlay'});</script>
+  <![endif]-->
+</body>
+  <!-- Load Javascripts for Widgets -->
+  
+  <!-- LOAD HIGHLIGHTER JS FILES -->
+  <script src="libraries/highlighters/highlight.js/highlight.pack.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+  <!-- DONE LOADING HIGHLIGHTER JS FILES -->
+   
+  </html>
