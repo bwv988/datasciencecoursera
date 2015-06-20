@@ -1,3 +1,3 @@
-# Exploratory Data Analysis
+## Exploratory Data Analysis
 
-Exploratory data plotting techniques.
+Some tests for exploratory data plotting and analysis techniques.
